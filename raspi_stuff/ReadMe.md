@@ -19,4 +19,4 @@ libswscale-dev libswresample-dev
 # Taking on the action
 - sudo python camera_input.py
 - python stream_server.py
-Do both of those commands on the raspberri pi and your server on the same time
+- Do both of those commands on the raspberri pi and your server on the same time
