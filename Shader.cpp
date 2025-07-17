@@ -137,6 +137,7 @@ void Shader::use() {
 }
 
 void Shader::setInt(std::string uniform, int val) {
+#ifdef DEBUG
     if (ID == 0) {
         std::cerr << "WARNING: Attempted to set uniform on uninitialized shader program." << std::endl;
         return;
@@ -148,6 +149,11 @@ void Shader::setInt(std::string uniform, int val) {
     else {
         glUniform1i(loc, val);
     }
+#else
+        int loc = glGetUniformLocation(ID, uniform.c_str());
+        glUniform1i(loc, val);
+#endif
+
 }
 
 Shader::~Shader() {

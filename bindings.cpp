@@ -4,29 +4,33 @@
 
 void set_array(FrameBuffer& fb, py::array_t<unsigned char> np_array) {
     py::buffer_info info = np_array.request();
-
+    size_t height = info.shape[0];
+    size_t width  = info.shape[1];
+    // Use a preprocessor directive for debug output
+#ifdef DEBUG_GRAPHICS // You can define your own debug macro name
+    std::cout << "DEBUG_GRAPHICS: set_array called with array dimensions: "
+              << info.shape[0] << " (height) x "
+              << info.shape[1] << " (width) x "
+              << info.shape[2] << " (channels)" << std::endl;
+    std::cout << "DEBUG_GRAPHICS: Framebuffer dimensions: "
+              << fb.height << " (height) x "
+              << fb.width << " (width)" << std::endl;
     if (info.ndim != 3 || info.shape[2] != 3) {
         throw std::runtime_error("Expected numpy array of shape (height, width, 3) with dtype=uint8");
     }
 
-    size_t height = info.shape[0];
-    size_t width  = info.shape[1];
-
     if (width != fb.width || height != fb.height) {
         throw std::runtime_error("Array dimensions must match framebuffer dimensions");
     }
-
-    if (fb.array.size() != width * height) {
-        throw std::runtime_error("fb.array size doesn't match expected framebuffer pixel count");
+    if (fb.array.size() != width * height * 3) {
+        throw std::runtime_error("fb.array size doesn't match expected framebuffer pixel count (width * height * 3)");
     }
 
+#endif
     auto* ptr = static_cast<unsigned char*>(info.ptr);
-    std::memcpy(&fb.array[0], &ptr[0], width*height*3);
-
-    glActiveTexture(GL_TEXTURE0);
+    std::memcpy(&fb.array[0], &ptr[0], width * height * 3);
     glBindTexture(GL_TEXTURE_2D, fb.texID);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, fb.width, fb.height, 0, GL_RGB, GL_UNSIGNED_BYTE, fb.array.data());
-    glGenerateMipmap(GL_TEXTURE_2D);
 }
 
 PYBIND11_MODULE(myshader, m) {

@@ -33,6 +33,7 @@ FrameBuffer::FrameBuffer(size_t width, size_t height, std::string title)
     prog = new Shader("Vert.shader", "Fragment.shader");
     array.resize(width * height, { 0, 0, 0 });
     genVertexArr();
+    prog->use();
     genTex();
 }
 
@@ -41,20 +42,15 @@ bool FrameBuffer::shouldClose() {
 }
 
 void FrameBuffer::set_buffer() {
-    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texID);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, array.data());
-    glGenerateMipmap(GL_TEXTURE_2D);
 }
 
 void FrameBuffer::display() {
-    glClearColor(0.0f, 0.0f, 0.2f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     glfwPollEvents();
-    prog->use();
     prog->setInt("texUNI", 0);
     glBindVertexArray(ID);
-    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texID);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
     glfwSwapBuffers(window);
@@ -80,13 +76,13 @@ void FrameBuffer::genVertexArr() {
 }
 
 void FrameBuffer::genTex() {
+    glClearColor(0.0f, 0.0f, 0.2f, 1.0f);
     glGenTextures(1, &texID);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texID);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, array.data());
-    glGenerateMipmap(GL_TEXTURE_2D);
 }

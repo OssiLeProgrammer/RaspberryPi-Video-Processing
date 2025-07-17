@@ -5,6 +5,6 @@ layout (location = 1) in vec2 texUV;
 out vec2 UV;
 
 void main() {
-	UV = texUV;
-	gl_Position = vec4(aPOS, 1.0f);
+    UV = vec2(texUV.x, 1.0 - texUV.y);
+    gl_Position = vec4(aPOS, 1.0f);
 }
