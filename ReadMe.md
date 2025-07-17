@@ -9,8 +9,8 @@ It enables real-time shader processing and streaming via a Python module built w
 
 From the project root directory, run the following commands to configure and build the project:
 
-cmake -S . -B build
-cmake --build build --config Release
+- cmake -S . -B build
+- cmake --build build --config Release
 
 After the build completes, locate the generated Python module file (with extension .pyd or .so) inside the build directory and rename it to:
 
