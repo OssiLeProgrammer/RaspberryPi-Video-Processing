@@ -1,7 +1,8 @@
 import socket
+import sys
+sys.path.append("build/Release")
 import myshader
 import numpy as np
-import sys
 import time
 import av
 import struct
@@ -59,7 +60,7 @@ class Server:
 
             codec = av.CodecContext.create("mjpeg", "r")
 
-            while self.running:
+            while self.running and not self.fb.should_close():
                 # 1. 4-Byte-Größenpräfix lesen
                 size_prefix = self._recv_all(conn, struct.calcsize('!I'))
                 if size_prefix is None:

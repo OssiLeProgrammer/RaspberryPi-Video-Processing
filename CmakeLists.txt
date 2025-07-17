@@ -4,11 +4,34 @@ project(myshader_module LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-find_package(Python COMPONENTS Interpreter Development REQUIRED)
-find_package(pybind11 REQUIRED)
-find_package(glfw3 REQUIRED)
-find_package(glad REQUIRED)
+include(FetchContent)
+
+# Fetch pybind11
+FetchContent_Declare(
+  pybind11
+  GIT_REPOSITORY https://github.com/pybind/pybind11.git
+  GIT_TAG        v2.11.1
+)
+FetchContent_MakeAvailable(pybind11)
+
+# Fetch glad (OpenGL loader)
+FetchContent_Declare(
+  glad
+  GIT_REPOSITORY https://github.com/Dav1dde/glad.git
+  GIT_TAG        v2.0.4
+)
+FetchContent_MakeAvailable(glad)
+
+# Fetch GLFW (window + context creation)
+FetchContent_Declare(
+  glfw
+  GIT_REPOSITORY https://github.com/glfw/glfw.git
+  GIT_TAG        3.3.8
+)
+FetchContent_MakeAvailable(glfw)
+
 find_package(OpenGL REQUIRED)
+find_package(Python COMPONENTS Interpreter Development REQUIRED)
 
 set(SOURCES
     bindings.cpp
@@ -22,6 +45,6 @@ target_link_libraries(myshader PRIVATE
     Python::Python
     pybind11::pybind11
     glfw
-    glad::glad
+    glad
     OpenGL::GL
 )
