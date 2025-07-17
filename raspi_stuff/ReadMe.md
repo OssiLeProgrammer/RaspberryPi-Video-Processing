@@ -7,7 +7,7 @@ You need a raspberri pi for this of course and a raspberri pi compatible camera
 - sudo apt-get install -y ffmpeg libavcodec-dev libavformat-dev libavdevice-dev libavfilter-dev libavutil-dev
 libswscale-dev libswresample-dev
 
-pip install import_raspi.txt
+- pip install import_raspi.txt
 
 # Taking on the action
 You simply do python camera_.py
