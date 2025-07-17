@@ -19,13 +19,18 @@ After the build completes, locate the generated Python module file (with extensi
 ## Installing Python Dependencies
 Install the necessary Python packages listed in the import.txt file by running:
 
-
 - pip install -r import.txt
+
+## Configuring the Raspberri PI and its Camera
+- The raspberri pi necessitates a few other configurations.
+- Those are available under the raspi_stuff folder
 
 ## Running the Application
 On your host machine, run:
-
 - python Server.py
+On your Raspberri pi, run:
+- sudo python camera_.py 
+
 
 # Notes
 Ensure your Raspberry Pi camera module is properly connected and configured.
@@ -37,3 +42,5 @@ Ensure your Raspberry Pi camera module is properly connected and configured.
 - If you encounter issues, verify that all dependencies are installed and that the camera is working.
 
 - FFmpeg must be installed for all related functionality.
+
+- The sudo is important if you run it on the raspberri pi, especially if you have a PI 5. The Camera and its libraries are disabled for non root users.
