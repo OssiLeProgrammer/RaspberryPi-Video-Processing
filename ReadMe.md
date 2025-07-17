@@ -27,9 +27,9 @@ Install the necessary Python packages listed in the import.txt file by running:
 
 ## Running the Application
 On your host machine, run:
-- python Server.py
+- python stream_server.py
 On your Raspberri pi, run:
-- sudo python camera_.py 
+- sudo python camera_input.py 
 
 
 # Notes
