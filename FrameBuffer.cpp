@@ -14,6 +14,9 @@ unsigned int elements[6] = {
     0, 2, 3
 };
 
+void changeViewPort(GLFWwindow* window, int width, int height);
+
+
 FrameBuffer::FrameBuffer(size_t width, size_t height, std::string title)
     : width(width), height(height) {
     if (!glfwInit()) {
@@ -29,6 +32,8 @@ FrameBuffer::FrameBuffer(size_t width, size_t height, std::string title)
     }
     glfwMakeContextCurrent(window);
     gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+
+    glfwSetFramebufferSizeCallback(window, changeViewPort);
 
     prog = new Shader("Vert.shader", "Fragment.shader");
     array.resize(width * height, { 0, 0, 0 });
@@ -46,9 +51,15 @@ void FrameBuffer::set_buffer() {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, array.data());
 }
 
+void FrameBuffer::prepare() {
+    glfwPollEvents();
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, true);
+    }
+}
+
 void FrameBuffer::display() {
     glClear(GL_COLOR_BUFFER_BIT);
-    glfwPollEvents();
     prog->setInt("texUNI", 0);
     glBindVertexArray(ID);
     glBindTexture(GL_TEXTURE_2D, texID);
@@ -85,4 +96,8 @@ void FrameBuffer::genTex() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, array.data());
+}
+
+void changeViewPort(GLFWwindow* window, int width, int height) {
+    glViewport(0, 0, width, height);
 }

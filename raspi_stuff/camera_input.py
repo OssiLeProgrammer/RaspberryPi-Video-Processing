@@ -16,7 +16,7 @@ class PiCameraSender:
         self.framerate = framerate
         self.camera = None
         self.client_socket = None
-        self.running = False # Steuerflag für die Streamingschleife
+        self.running = False  # Control flag for the streaming loop
 
     def initialize_camera(self):
         try:
@@ -28,32 +28,32 @@ class PiCameraSender:
             self.camera.configure(video_config)
             self.camera.start()
             time.sleep(1)
-            print(f"Kamera konfiguriert: {self.width}x{self.height} @ {self.framerate} FPS")
+            print(f"Camera configured: {self.width}x{self.height} @ {self.framerate} FPS")
             return True
         except Exception as e:
-            print(f"Kamera-Initialisierungsfehler: {e}")
+            print(f"Camera initialization error: {e}")
             self.cleanup()
             return False
 
     def connect_to_server(self):
         try:
             self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            print(f"Verbinde mit {self.server_host}:{self.server_port}...")
+            print(f"Connecting to {self.server_host}:{self.server_port}...")
             self.client_socket.connect((self.server_host, self.server_port))
-            print("Verbunden mit Server!")
+            print("Connected to server!")
             return True
         except Exception as e:
-            print(f"Socket-Verbindungsfehler: {e}")
+            print(f"Socket connection error: {e}")
             self.cleanup()
             return False
 
     def stream_frames(self):
         """
-        Erfasst kontinuierlich Frames von der Kamera, kodiert sie als JPEG
-        und sendet sie über den verbundenen Socket.
+        Continuously captures frames from the camera, encodes them as JPEG,
+        and sends them over the connected socket.
         """
         if not self.camera or not self.client_socket:
-            print("Kamera oder Socket nicht initialisiert. Abbruch.")
+            print("Camera or socket not initialized. Aborting.")
             return
 
         self.running = True
@@ -61,62 +61,62 @@ class PiCameraSender:
             while self.running:
                 frame_np = self.camera.capture_array()
                 video_frame = av.VideoFrame.from_ndarray(frame_np, format='rgb24')
-                
+
                 output_buffer = io.BytesIO()
-                # Verwenden Sie MJPEG als Format für den Container, da jeder Frame ein separates JPEG ist.
+                # Use MJPEG as container format because each frame is a separate JPEG.
                 container = av.open(output_buffer, mode='w', format='mjpeg')
-                
-                # Fügen Sie einen Videostream hinzu. Die Rate ist wichtig, um die Zeitstempel zu setzen.
+
+                # Add a video stream. Rate is important to set timestamps.
                 stream = container.add_stream('mjpeg', rate=self.framerate)
                 stream.width = self.width
                 stream.height = self.height
-                stream.pix_fmt = 'yuvj420p' # YUVJ420P ist ein häufiges Pixelformat für JPEGs
+                stream.pix_fmt = 'yuvj420p'  # YUVJ420P is a common pixel format for JPEGs
 
-                # Kodieren Sie den Frame. Der Encoder kann mehrere Pakete für einen Frame zurückgeben.
+                # Encode the frame. Encoder may return multiple packets per frame.
                 for packet in stream.encode(video_frame):
                     container.mux(packet)
-                
-                # Schließen Sie den Container, um sicherzustellen, dass alle gepufferten Daten
-                # (z.B. Stream-Header, letztes Paket) in den output_buffer geschrieben werden.
-                # Wichtig: Für kontinuierliches Streaming sollte der Container nicht bei jedem Frame geschlossen werden,
-                # aber für einzelne JPEGs pro Übertragung ist dies der Weg, um ein vollständiges JPEG zu erhalten.
-                # Alternativ könnte man den Encoder direkt verwenden und die Pakete sammeln.
-                # Hier wird der Container geschlossen, um einen vollständigen JPEG-Stream pro Frame zu erhalten.
-                container.close() 
-                
+
+                # Close the container to ensure all buffered data
+                # (e.g., stream headers, last packet) is written to output_buffer.
+                # Note: For continuous streaming, you wouldn't close the container every frame,
+                # but since we're sending individual JPEGs per transmission, this ensures
+                # a complete JPEG image is obtained.
+                # Alternatively, you could directly use the encoder and collect packets.
+                container.close()
+
                 jpeg_bytes = output_buffer.getvalue()
                 message_size = len(jpeg_bytes)
-                size_prefix = struct.pack('!I', message_size) # 4-Byte-Präfix für die Größe
+                size_prefix = struct.pack('!I', message_size)  # 4-byte prefix for the size
 
                 self.client_socket.sendall(size_prefix + jpeg_bytes)
-                print(f"JPEG-Frame gesendet ({message_size} Bytes).")
+                print(f"JPEG frame sent ({message_size} bytes).")
 
-                # Eine kleine Verzögerung, um die Bildrate zu steuern (optional, da Picamera2 bereits eine Framerate hat)
-                # time.sleep(1 / self.framerate) 
+                # Small delay to control frame rate (optional, Picamera2 already sets framerate)
+                # time.sleep(1 / self.framerate)
 
         except ConnectionResetError:
-            print("Server hat die Verbindung zwangsweise geschlossen.")
+            print("Server forcibly closed the connection.")
         except Exception as e:
-            print(f"Fehler beim Streamen: {e}")
+            print(f"Error during streaming: {e}")
         finally:
-            self.cleanup() # Bereinigung nach Beendigung der Schleife oder bei Fehler
+            self.cleanup()  # Cleanup after loop ends or on error
 
     def cleanup(self):
         """
-        Bereinigt Kamera- und Socket-Ressourcen.
+        Cleans up camera and socket resources.
         """
         if self.camera:
-            print("Kamera wird gestoppt.")
+            print("Stopping camera.")
             self.camera.stop()
             self.camera = None
         if self.client_socket:
-            print("Socket wird geschlossen.")
+            print("Closing socket.")
             self.client_socket.close()
             self.client_socket = None
-        self.running = False # Sicherstellen, dass das Flag auf False gesetzt ist
+        self.running = False  # Ensure the flag is set to False
 
 if __name__ == "__main__":
-    SERVER_IP = '192.168.1.13' # Ersetzen Sie dies durch die IP-Adresse Ihres Servers
+    SERVER_IP = '192.168.1.13'  # Replace this with your server's IP address
     SERVER_PORT = 8080
     FRAME_WIDTH = 800
     FRAME_HEIGHT = 600
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     sender = PiCameraSender(SERVER_IP, SERVER_PORT, FRAME_WIDTH, FRAME_HEIGHT, FRAME_RATE)
     if sender.initialize_camera():
         if sender.connect_to_server():
-            sender.stream_frames() # Aufruf der neuen Methode zum Streamen von Frames
+            sender.stream_frames()  # Call the new method to stream frames
 
-    print("Sender beendet.")
+    print("Sender stopped.")
     sys.exit(0)

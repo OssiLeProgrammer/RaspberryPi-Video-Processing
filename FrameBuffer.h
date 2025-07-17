@@ -28,6 +28,7 @@ public:
     FrameBuffer(size_t width, size_t height, std::string title);
     bool shouldClose();
     void set_buffer();
+    void prepare();
     void display();
 
 private:

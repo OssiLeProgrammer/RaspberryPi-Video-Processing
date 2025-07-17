@@ -36,6 +36,7 @@ void set_array(FrameBuffer& fb, py::array_t<unsigned char> np_array) {
 PYBIND11_MODULE(myshader, m) {
     py::class_<FrameBuffer>(m, "FrameBuffer")
         .def(py::init<size_t, size_t, std::string>())
+        .def("prepare", &FrameBuffer::prepare)
         .def("display", &FrameBuffer::display)
         .def("should_close", &FrameBuffer::shouldClose);
 

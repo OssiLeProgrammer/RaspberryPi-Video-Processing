@@ -21,7 +21,7 @@ class Server:
 
     def start(self, backlog: int = 5):
         """
-        Startet den Server, bindet ihn an den angegebenen Host und Port und lauscht auf Verbindungen.
+        Starts the server, binds it to the specified host and port, and listens for connections.
         """
         try:
             self.listening_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -29,116 +29,118 @@ class Server:
             self.listening_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             self.listening_socket.bind((self.host, self.port))
             self.listening_socket.listen(backlog)
-            print(f"Server lauscht auf {self.host}:{self.port} für JPEG-Videostrom.")
+            print(f"Server listening on {self.host}:{self.port} for JPEG video stream.")
             self.running = True
             return True
         except Exception as e:
-            print(f"Fehler beim Starten des Servers: {e}")
+            print(f"Error starting server: {e}")
             self.close()
             return False
 
     def _recv_all(self, sock, n_bytes):
         """
-        Hilfsfunktion, um sicherzustellen, dass alle n_bytes vom Socket empfangen werden.
+        Helper function to ensure all n_bytes are received from the socket.
         """
         data = b''
         while len(data) < n_bytes:
             packet = sock.recv(n_bytes - len(data))
             if not packet:
-                # Client getrennt oder Fehler
+                # Client disconnected or error occurred
                 return None
             data += packet
         return data
 
     def run_forever(self):
-        print("Warte auf eine Client-Verbindung...")
+        print("Waiting for a client connection...")
         try:
             conn, addr = self.listening_socket.accept()
-            print(f"Verbunden mit {addr}")
+            print(f"Connected to {addr}")
             conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-
 
             codec = av.CodecContext.create("mjpeg", "r")
 
             while self.running and not self.fb.should_close():
-                # 1. 4-Byte-Größenpräfix lesen
+                # Internal checks
+                self.fb.prepare()
+
+                # 1. Read 4-byte size prefix
                 size_prefix = self._recv_all(conn, struct.calcsize('!I'))
                 if size_prefix is None:
-                    print("Client während des Lesens des Größenpräfixes getrennt.")
-                    break # Client getrennt
+                    print("Client disconnected while reading size prefix.")
+                    break  # Client disconnected
 
                 try:
-                    # Größe der eingehenden JPEG-Daten entpacken
+                    # Unpack size of incoming JPEG data
                     jpeg_payload_size = struct.unpack('!I', size_prefix)[0]
                 except struct.error as e:
-                    print(f"Fehler beim Entpacken des Größenpräfixes: {e}. Beschädigte Daten empfangen.")
-                    break # Beschädigte Daten, Verbindung trennen
+                    print(f"Error unpacking size prefix: {e}. Corrupted data received.")
+                    break  # Corrupted data, disconnect
 
-                # 2. Genaue Anzahl der Bytes für die JPEG-Nutzlast lesen
+                # 2. Read the exact number of bytes for the JPEG payload
                 jpeg_data = self._recv_all(conn, jpeg_payload_size)
                 if jpeg_data is None:
-                    print("Client während des Lesens der JPEG-Daten getrennt.")
-                    break # Client getrennt
+                    print("Client disconnected while reading JPEG data.")
+                    break  # Client disconnected
 
-                # Ein AvPacket aus den empfangenen JPEG-Daten erstellen
-                # Für MJPEG ist jeder empfangene Chunk ein vollständiges JPEG-Bild (Paket).
+                # Create an AvPacket from received JPEG data
+                # For MJPEG, each received chunk is a full JPEG frame (packet).
                 packet = av.Packet(jpeg_data)
-                
-                # Paket dekodieren. Für MJPEG liefert ein Paket normalerweise einen Frame.
+
+                # Decode packet. For MJPEG, one packet usually yields one frame.
                 frames = codec.decode(packet)
 
                 for frame in frames:
-                    # Den dekodierten Frame in ein NumPy-Array im RGB24-Format konvertieren
+                    # Convert decoded frame to a NumPy array in RGB24 format
                     rgb_image = frame.to_ndarray(format="rgb24")
-                    
-                    # Sicherstellen, dass die Dimensionen übereinstimmen, bevor das Array gesetzt wird
+
+                    # Ensure dimensions match before setting the array
                     if rgb_image.shape[0] == self.height and rgb_image.shape[1] == self.width:
                         myshader.set_array(self.fb, rgb_image)
                         self.fb.display()
                     else:
-                        print(f"Warnung: Empfangene Frame-Dimensionen {rgb_image.shape[1]}x{rgb_image.shape[0]} stimmen nicht mit den erwarteten {self.width}x{self.height} überein. Anzeige übersprungen.")
-                    
-                    # Kleine Verzögerung, um eine Überlastung des Displays/der CPU zu vermeiden, bei Bedarf anpassen
-                    time.sleep(0.01) 
+                        print(f"Warning: Received frame dimensions {rgb_image.shape[1]}x{rgb_image.shape[0]} do not match expected {self.width}x{self.height}. Skipping display.")
+
+                    # Small delay to avoid overloading display/CPU, adjust if needed
+                    time.sleep(0.01)
 
         except ConnectionResetError:
-            print("Client hat die Verbindung zwangsweise geschlossen.")
+            print("Client forcibly closed the connection.")
         except Exception as e:
-            print(f"Fehler in der run_forever-Schleife: {e}")
+            print(f"Error in run_forever loop: {e}")
         finally:
             if 'conn' in locals() and conn:
-                print("Client-Verbindung wird geschlossen.")
+                print("Closing client connection.")
                 conn.close()
-            self.close() # Sicherstellen, dass Server-Ressourcen bereinigt werden
+            self.close()  # Ensure server resources are cleaned up
 
     def close(self):
         """
-        Schließt den lauschenden Socket des Servers und den Framebuffer.
+        Closes the server's listening socket and the framebuffer.
         """
         self.running = False
         if self.listening_socket:
-            print("Lauschender Socket des Servers wird geschlossen.")
-            # Der shutdown-Aufruf wurde entfernt, da er für lauschende Sockets oft nicht notwendig ist
-            # und zu Fehlern führen kann, wenn der Socket bereits in einem ungültigen Zustand ist.
-            # socket.close() ist ausreichend, um die Ressourcen freizugeben.
+            print("Closing server listening socket.")
+            # The shutdown call was removed because it is often unnecessary for listening sockets
+            # and can cause errors if the socket is already in an invalid state.
+            # socket.close() is sufficient to release resources.
             self.listening_socket.close()
             self.listening_socket = None
 
         if self.fb:
-            print("Framebuffer wird geschlossen.")
-            # Hier können zusätzliche Framebuffer-Bereinigungen vorgenommen werden, falls myshader.FrameBuffer eine close/destroy-Methode hat
-            # self.fb.close() # Beispiel, falls eine solche Methode existiert
+            print("Closing framebuffer.")
+            # Additional framebuffer cleanup can be done here if myshader.FrameBuffer has a close/destroy method
+            # self.fb.close() # Example if such a method exists
 
 if __name__ == "__main__":
-    SERVER_IP = '0.0.0.0' # Auf allen verfügbaren Netzwerkschnittstellen lauschen
+    SERVER_IP = '0.0.0.0'  # Listen on all available network interfaces
     SERVER_PORT = 8080
-    FRAME_WIDTH = 800     # Muss mit der FRAME_WIDTH des Senders übereinstimmen
-    FRAME_HEIGHT = 600    # Muss mit der FRAME_HEIGHT des Senders übereinstimmen
+    FRAME_WIDTH = 800      # Must match the FRAME_WIDTH of the sender
+    FRAME_HEIGHT = 600     # Must match the FRAME_HEIGHT of the sender
     TITLE = "Shader Server"
 
     server = Server(SERVER_IP, SERVER_PORT, FRAME_WIDTH, FRAME_HEIGHT, TITLE)
     if server.start():
         server.run_forever()
-    
-    print("Server beendet.")
+
+    print("Server stopped.")
     sys.exit(0)
